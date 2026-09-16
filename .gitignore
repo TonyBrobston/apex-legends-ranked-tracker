@@ -1,5 +1,7 @@
 node_modules
 .next
+apex.env
+apex.env.local
 .env
 .env.local
 npm-debug.log*

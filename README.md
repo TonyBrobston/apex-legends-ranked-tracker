@@ -25,14 +25,12 @@ window of recent matches.
      `origin:MyName,psn:OtherAccount`. Platform is one of `origin` (PC),
      `psn` (PlayStation), `xbl` (Xbox).
    - `TRACKER_API_KEY` — free key from https://tracker.gg/developers.
-2. `docker compose --env-file apex.env up --build`
+2. `docker compose up --build`
 3. Open http://localhost:3000
 
 `apex.env` holds real secrets and is gitignored; `apex.env.example` is the
-committed template. Docker Compose doesn't auto-load a non-`.env`-named file,
-so the `--env-file apex.env` flag is required on every `docker compose`
-invocation (or `export COMPOSE_ENV_FILES=apex.env` in your shell to avoid
-typing it each time).
+committed template. Each service loads it directly via `env_file: apex.env`
+in `docker-compose.yml`, so no `--env-file` flag is needed.
 
 The `poller` service syncs immediately on startup, then every
 `POLL_INTERVAL_MINUTES` (default 15). You can also click **Sync now** on the

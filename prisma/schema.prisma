@@ -1,0 +1,63 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  platform  String
+  name      String
+  uid       String?
+  createdAt DateTime @default(now())
+
+  matches   Match[]
+  snapshots RankSnapshot[]
+
+  @@unique([platform, name])
+}
+
+model RankSnapshot {
+  id         String   @id @default(cuid())
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  capturedAt DateTime @default(now())
+
+  rankName  String
+  rankDiv   Int?
+  rankScore Int?
+  ladderPos Int?
+
+  @@index([accountId, capturedAt])
+}
+
+model Match {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  // External match id from the stats API, used to de-duplicate on each poll.
+  matchId  String
+  playedAt DateTime
+
+  legend    String?
+  placement Int?
+  kills     Int?
+  damage    Int?
+
+  rpChange       Int?
+  rankScoreAfter Int?
+  rankName       String?
+  rankDiv        Int?
+
+  // Full raw payload for the match, kept so the field mapping above can be
+  // corrected/extended later without re-fetching from the API.
+  raw Json?
+
+  @@unique([accountId, matchId])
+  @@index([accountId, playedAt])
+}

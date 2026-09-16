@@ -1,5 +1,6 @@
 node_modules
 .next
+.claude
 apex.env
 apex.env.local
 .env

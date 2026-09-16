@@ -29,12 +29,3 @@ COPY --from=builder /app/next.config.js ./next.config.js
 
 EXPOSE 3000
 CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
-
-# ---- poller: background sync worker, no Next.js build needed ----
-FROM node:20-alpine AS poller
-RUN apk add --no-cache openssl
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npx prisma generate
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx src/scripts/poller.ts"]

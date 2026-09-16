@@ -6,17 +6,19 @@ gained/lost, and rank at the time of the match.
 
 ## How it works
 
-- **`app`** — the Next.js web UI. Home page lists the configured accounts;
-  clicking one shows its ranked match history.
-- **`poller`** — a background worker that polls the
-  [Tracker.gg Apex API](https://tracker.gg/developers) on an interval and
-  writes rank snapshots + match history into Postgres.
-- **`db`** — Postgres, persisted via a Docker volume, shared by `app` and
-  `poller`.
+- **`app`** — the Next.js web UI. Home page lists the configured accounts
+  (read straight from the database, no live fetch). Clicking an account
+  triggers a live sync against the
+  [Tracker.gg Apex API](https://tracker.gg/developers) for that account —
+  current rank + recent matches — before rendering its history.
+- **`db`** — Postgres, persisted via a Docker volume.
 
 Match history is stored in the database (not just fetched live) so it
-accumulates over time, since the public API generally only returns a limited
-window of recent matches.
+accumulates across visits, since the public API generally only returns a
+limited window of recent matches. Every account-page visit re-syncs and
+upserts into that history, so revisiting the same account repeatedly won't
+create duplicates (dedup key is `[accountId, matchId]`), and if the sync
+fails the page falls back to showing whatever was already stored.
 
 ## Setup
 
@@ -32,9 +34,11 @@ window of recent matches.
 committed template. Each service loads it directly via `env_file: apex.env`
 in `docker-compose.yml`, so no `--env-file` flag is needed.
 
-The `poller` service syncs immediately on startup, then every
-`POLL_INTERVAL_MINUTES` (default 15). You can also click **Sync now** on the
-home page to trigger an immediate sync from the UI.
+Nothing syncs until you open an account page — visiting
+`/accounts/<platform>/<name>` is what triggers that account's sync. The home
+page also has a **Sync now** button, which syncs every configured account at
+once (handy for refreshing the home page's rank summary without opening each
+one individually).
 
 ## Important: verify the Tracker.gg field mapping
 
@@ -47,7 +51,7 @@ Every match is stored with its full raw API payload in `Match.raw`, so if a
 field renders as "—" in the UI but you can see the real value in `raw`,
 open that match's row and adjust the corresponding `pick([...])` candidate
 list in `src/lib/tracker.ts` — no data is lost while you do this, since
-`raw` is preserved and `Match` rows are upserted (re-synced) on each poll.
+`raw` is preserved and `Match` rows are upserted (re-synced) on each visit.
 
 ## Local development (without Docker)
 
@@ -58,9 +62,6 @@ docker run -d --name apex-pg -e POSTGRES_USER=apex -e POSTGRES_PASSWORD=apex \
 DATABASE_URL="postgresql://apex:apex@localhost:5432/apex_tracker" npx prisma migrate deploy
 npm run dev
 ```
-
-Run the poller separately with `npm run poll` (needs `DATABASE_URL`,
-`TRACKER_API_KEY`, and `ACCOUNTS` set in the environment).
 
 ## Schema changes
 

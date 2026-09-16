@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getConfiguredAccounts, type Platform } from "@/lib/accounts";
+import { syncAccount } from "@/lib/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,15 @@ export default async function AccountHistoryPage({
   const resolvedParams = await params;
   const name = decodeURIComponent(resolvedParams.name);
   const platform = resolvedParams.platform;
+
+  const isConfigured = getConfiguredAccounts().some(
+    (a) => a.platform === platform && a.name === name
+  );
+  if (!isConfigured) {
+    notFound();
+  }
+
+  const syncResult = await syncAccount({ platform: platform as Platform, name });
 
   const account = await prisma.account.findUnique({
     where: { platform_name: { platform, name } },
@@ -62,10 +73,18 @@ export default async function AccountHistoryPage({
         )}
       </div>
 
+      {syncResult.error && (
+        <div className="mb-4 rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-sm text-amber-300">
+          Live sync failed, showing previously stored data: {syncResult.error}
+        </div>
+      )}
+
       {account.matches.length === 0 ? (
         <p className="text-neutral-400">
-          No match history yet. It will appear here after the poller completes its first sync
-          (or click "Sync now" from the home page).
+          No match history yet.
+          {syncResult.error
+            ? " The live sync above failed — fix the issue and reload this page."
+            : " Data was just synced but the API returned no recent matches."}
         </p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-neutral-800">

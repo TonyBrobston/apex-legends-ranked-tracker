@@ -25,16 +25,5 @@ services:
       db:
         condition: service_healthy
 
-  poller:
-    build:
-      context: .
-      target: poller
-    restart: unless-stopped
-    env_file:
-      - apex.env
-    depends_on:
-      db:
-        condition: service_healthy
-
 volumes:
   db-data:
